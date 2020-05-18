@@ -1,0 +1,34 @@
+Transform: 'AWS::Serverless-2016-10-31'
+Resources:
+  primer:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs12.x
+      InlineCode: |
+        var aws = require('aws-sdk');
+        var response = require('cfn-response');
+        exports.handler = function(event, context) {
+            // For Delete requests, immediately send a SUCCESS response.
+            if (event.RequestType == "Delete") {
+                response.send(event, context, "SUCCESS");
+                return;
+            }
+            var responseStatus = "FAILED";
+            var responseData = {};
+            var functionName = event.ResourceProperties.FunctionName
+            var lambda = new aws.Lambda();
+            lambda.invoke({ FunctionName: functionName }, function(err, invokeResult) {
+                if (err) {
+                    responseData = {Error: "Invoke call failed"};
+                    console.log(responseData.Error + ":\n", err);
+                }
+                else responseStatus = "SUCCESS";
+                response.send(event, context, responseStatus, responseData);
+            });
+        };
+      Description: Invoke a function to create a log stream.
+      MemorySize: 128
+      Timeout: 8
+      Role: arn:aws:iam::494526681395:role/pei-lambda-role
+      Tracing: Active
